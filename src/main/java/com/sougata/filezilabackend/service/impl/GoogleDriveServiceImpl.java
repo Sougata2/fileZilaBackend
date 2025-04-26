@@ -85,12 +85,6 @@ public class GoogleDriveServiceImpl implements GoogleDriveService {
                 .build();
     }
 
-//Code needs to be implemented for the uploding a file to drive
-//uploading functions are as follows as
-//Using this code snippet you can do all drive functionality
-//getfiles()
-//uploadFile()
-
 
     @Override
     public String getFiles() {
@@ -99,7 +93,7 @@ public class GoogleDriveServiceImpl implements GoogleDriveService {
             Drive service = getInstance();
             // Print the names and IDs for up to 10 files.
             FileList result = service.files().list()
-                    .setPageSize(10)
+                    .setPageSize(100)
                     .execute();
             List<File> files = result.getFiles();
             if (files == null || files.isEmpty()) {
