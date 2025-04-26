@@ -15,7 +15,7 @@ public class CorsConfig {
             public void addCorsMappings(@Nonnull CorsRegistry registry) {
                 WebMvcConfigurer.super.addCorsMappings(registry);
                 registry.addMapping("/**")
-                        .allowedOrigins("http://localhost:5173")
+                        .allowedOrigins("http://localhost:5173", "https://jovial-kelpie-2622db.netlify.app")
                         .allowedHeaders("*")
                         .allowCredentials(true)
                         .allowedMethods("GET", "POST", "PUT", "DELETE");
