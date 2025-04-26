@@ -5,6 +5,7 @@ import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInsta
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.InputStreamContent;
 import com.google.api.client.http.javanet.NetHttpTransport;
@@ -49,6 +50,9 @@ public class GoogleDriveServiceImpl implements GoogleDriveService {
             Collections.singletonList(DriveScopes.DRIVE_FILE);
     private static final String CREDENTIALS_FILE_PATH = "/credentials.json";
 
+    private static final String SERVICE_ACCOUNT_KEY_FILE = "/service-account.json"; // 🔥
+
+
     /**
      * Creates an authorized Credential object.
      *
@@ -77,10 +81,24 @@ public class GoogleDriveServiceImpl implements GoogleDriveService {
         return new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
     }
 
+    // use for a non-service account.
     public Drive getInstance() throws GeneralSecurityException, IOException {
         // Build a new authorized API client service.
         final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
         return new Drive.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT))
+                .setApplicationName(APPLICATION_NAME)
+                .build();
+    }
+
+    public Drive getInstanceServiceAccount() throws GeneralSecurityException, IOException {
+        final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+
+        InputStream in = GoogleDriveServiceImpl.class.getResourceAsStream(SERVICE_ACCOUNT_KEY_FILE);
+        // TODO: REPLACE THE DEPRECATED CODE
+        GoogleCredential credential = GoogleCredential.fromStream(in)
+                .createScoped(Collections.singleton(DriveScopes.DRIVE));
+
+        return new Drive.Builder(HTTP_TRANSPORT, JSON_FACTORY, credential)
                 .setApplicationName(APPLICATION_NAME)
                 .build();
     }
@@ -90,9 +108,10 @@ public class GoogleDriveServiceImpl implements GoogleDriveService {
     public String getFiles() {
 
         try {
-            Drive service = getInstance();
+            Drive service = getInstanceServiceAccount();
             // Print the names and IDs for up to 10 files.
             FileList result = service.files().list()
+                    .setQ("mimeType != 'application/vnd.google-apps.folder'") // disabling the upload file project config folder.
                     .setPageSize(100)
                     .execute();
             List<File> files = result.getFiles();
@@ -116,7 +135,7 @@ public class GoogleDriveServiceImpl implements GoogleDriveService {
             File fileMetadata = new File();
             fileMetadata.setParents(Collections.singletonList(folderId));
             fileMetadata.setName(file.getOriginalFilename());
-            File uploadFile = getInstance()
+            File uploadFile = getInstanceServiceAccount()
                     .files()
                     .create(fileMetadata, new InputStreamContent(
                             file.getContentType(),
@@ -134,7 +153,7 @@ public class GoogleDriveServiceImpl implements GoogleDriveService {
     @Override
     public File downloadFile(String fileId, OutputStream outputStream) {
         try {
-            Drive service = getInstance();
+            Drive service = getInstanceServiceAccount();
             File fileMetaData = service.files().get(fileId).setFields("name, mimeType").execute();
             service.files().get(fileId).executeMediaAndDownloadTo(outputStream);
             return fileMetaData;
@@ -146,7 +165,7 @@ public class GoogleDriveServiceImpl implements GoogleDriveService {
     @Override
     public void previewFile(String fileId, HttpServletResponse response) {
         try {
-            Drive service = getInstance();
+            Drive service = getInstanceServiceAccount();
             File fileMetaData = service.files().get(fileId).setFields("name, mimeType").execute();
 
             response.setContentType(fileMetaData.getMimeType());
