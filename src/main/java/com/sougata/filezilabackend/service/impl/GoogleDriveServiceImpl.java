@@ -1,5 +1,6 @@
 package com.sougata.filezilabackend.service.impl;
 
+import com.google.api.client.auth.oauth2.BearerToken;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
@@ -85,11 +86,15 @@ public class GoogleDriveServiceImpl implements GoogleDriveService {
     public Drive getInstance() throws GeneralSecurityException, IOException {
         // Build a new authorized API client service.
         final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
-        return new Drive.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT))
+        return new Drive.Builder(HTTP_TRANSPORT, JSON_FACTORY, new Credential(BearerToken.authorizationHeaderAccessMethod())
+                .setAccessToken("<an access token>"))
                 .setApplicationName(APPLICATION_NAME)
                 .build();
     }
 
+    // service account has a different Google Drive set in it, so accessing that is not suitable.
+    // thus useless here.
+    // NOT IN USE ---
     public Drive getInstanceServiceAccount() throws GeneralSecurityException, IOException {
         final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
 
@@ -102,13 +107,14 @@ public class GoogleDriveServiceImpl implements GoogleDriveService {
                 .setApplicationName(APPLICATION_NAME)
                 .build();
     }
+    // NOT IN USE ---
 
 
     @Override
     public String getFiles() {
 
         try {
-            Drive service = getInstanceServiceAccount();
+            Drive service = getInstance();
             // Print the names and IDs for up to 10 files.
             FileList result = service.files().list()
                     .setQ("mimeType != 'application/vnd.google-apps.folder'") // disabling the upload file project config folder.
@@ -135,7 +141,7 @@ public class GoogleDriveServiceImpl implements GoogleDriveService {
             File fileMetadata = new File();
             fileMetadata.setParents(Collections.singletonList(folderId));
             fileMetadata.setName(file.getOriginalFilename());
-            File uploadFile = getInstanceServiceAccount()
+            File uploadFile = getInstance()
                     .files()
                     .create(fileMetadata, new InputStreamContent(
                             file.getContentType(),
@@ -153,7 +159,7 @@ public class GoogleDriveServiceImpl implements GoogleDriveService {
     @Override
     public File downloadFile(String fileId, OutputStream outputStream) {
         try {
-            Drive service = getInstanceServiceAccount();
+            Drive service = getInstance();
             File fileMetaData = service.files().get(fileId).setFields("name, mimeType").execute();
             service.files().get(fileId).executeMediaAndDownloadTo(outputStream);
             return fileMetaData;
@@ -165,7 +171,7 @@ public class GoogleDriveServiceImpl implements GoogleDriveService {
     @Override
     public void previewFile(String fileId, HttpServletResponse response) {
         try {
-            Drive service = getInstanceServiceAccount();
+            Drive service = getInstance();
             File fileMetaData = service.files().get(fileId).setFields("name, mimeType").execute();
 
             response.setContentType(fileMetaData.getMimeType());
