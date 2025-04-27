@@ -29,7 +29,7 @@ import java.util.List;
 
 /* class to demonstrate use of Drive files list API */
 @Service
-public class GoogleDriveServiceImpl implements GoogleDriveService {
+public class GoogleDriveServiceImpl {
     /**
      * Application name.
      */
@@ -110,7 +110,7 @@ public class GoogleDriveServiceImpl implements GoogleDriveService {
     // NOT IN USE ---
 
 
-    @Override
+    //    @Override
     public String getFiles() {
 
         try {
@@ -132,7 +132,7 @@ public class GoogleDriveServiceImpl implements GoogleDriveService {
         }
     }
 
-    @Override
+    //    @Override
     public String uploadFile(MultipartFile file) {
         try {
             System.out.println(file.getOriginalFilename());
@@ -156,7 +156,7 @@ public class GoogleDriveServiceImpl implements GoogleDriveService {
         return null;
     }
 
-    @Override
+    //    @Override
     public File downloadFile(String fileId, OutputStream outputStream) {
         try {
             Drive service = getInstance();
@@ -168,7 +168,7 @@ public class GoogleDriveServiceImpl implements GoogleDriveService {
         }
     }
 
-    @Override
+    //    @Override
     public void previewFile(String fileId, HttpServletResponse response) {
         try {
             Drive service = getInstance();
