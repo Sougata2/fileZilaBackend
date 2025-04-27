@@ -1,6 +1,7 @@
 package com.sougata.filezilabackend.service.impl;
 
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.InputStreamContent;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.gson.GsonFactory;
@@ -22,8 +23,10 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Collections;
 import java.util.Date;
 
 @Service
@@ -78,17 +81,55 @@ public class DriveServiceImpl implements GoogleDriveService {
 
     @Override
     public String uploadFile(MultipartFile file) {
-        return "";
-    }
+        try {
+            System.out.println(file.getOriginalFilename());
 
-    @Override
-    public File downloadFile(String fileId, OutputStream outputStream) {
+            String folderId = "1-NQmE0gA6PmZELNeImUA4zO-CgE9Fpra";
+            File fileMetadata = new File();
+            fileMetadata.setParents(Collections.singletonList(folderId));
+            fileMetadata.setName(file.getOriginalFilename());
+            File uploadFile = getDrive()
+                    .files()
+                    .create(fileMetadata, new InputStreamContent(
+                            file.getContentType(),
+                            new ByteArrayInputStream(file.getBytes()))
+                    )
+                    .setFields("id").execute();
+            System.out.println(uploadFile);
+            return uploadFile.getId();
+        } catch (Exception e) {
+            System.out.printf("Error: " + e);
+        }
         return null;
     }
 
     @Override
-    public void previewFile(String fileId, HttpServletResponse response) {
+    public File downloadFile(String fileId, OutputStream outputStream) {
+        try {
+            Drive service = getDrive();
+            File fileMetaData = service.files().get(fileId).setFields("name, mimeType").execute();
+            service.files().get(fileId).executeMediaAndDownloadTo(outputStream);
+            return fileMetaData;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 
+    @Override
+    public void previewFile(String fileId, HttpServletResponse response) {
+        try {
+            Drive service = getDrive();
+            File fileMetaData = service.files().get(fileId).setFields("name, mimeType").execute();
+
+            response.setContentType(fileMetaData.getMimeType());
+            response.setHeader("Content-Disposition", "inline; filename=\"" + fileMetaData.getName() + "\"");
+
+            OutputStream outputStream = response.getOutputStream();
+            service.files().get(fileId).executeMediaAndDownloadTo(outputStream);
+            outputStream.flush();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to stream file: " + e.getMessage(), e);
+        }
     }
 
 

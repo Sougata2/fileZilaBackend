@@ -6,11 +6,14 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
+import java.io.ByteArrayOutputStream;
 
 
 @RestController
@@ -32,19 +35,30 @@ public class FileController {
         return ResponseEntity.ok(googleDriveService.uploadFile(file));
     }
 
-    @GetMapping("/google/download/{id}")
-    public ResponseEntity<Void> downloadFile(@PathVariable String id, HttpServletResponse response) {
+    @GetMapping("/google/download/{fileId}")
+    public ResponseEntity<byte[]> downloadFile(@PathVariable String fileId) {
         try {
-            logger.info("download file with id {}", id);
-            File fileMetaData = googleDriveService.downloadFile(id, response.getOutputStream());
-            response.setContentType(fileMetaData.getMimeType());
-            response.setHeader("Content-Disposition", "attachment; filename=\"" + fileMetaData.getName() + "\"");
-            response.flushBuffer();
-            return ResponseEntity.noContent().build();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            File fileMetaData = googleDriveService.downloadFile(fileId, outputStream);
+            System.out.println(fileMetaData.getName());  // Debug log to check the filename
+
+            byte[] fileBytes = outputStream.toByteArray();
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType(fileMetaData.getMimeType()));
+
+            // Fix: Ensure filename is correctly quoted and no special encoding needed
+            String filename = fileMetaData.getName();
+//            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"");
+            headers.set("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+
+//            return new ResponseEntity<>(fileBytes, headers, HttpStatus.OK);
+            return ResponseEntity.ok().headers(headers).body(fileBytes);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
 
     @GetMapping("/google/preview/{id}")
     public void previewFile(@PathVariable String id, HttpServletResponse response) {
