@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
+import java.util.Map;
 
 
 @RestController
@@ -23,10 +24,10 @@ public class FileController {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private final GoogleDriveService googleDriveService;
 
-    @GetMapping("/google")
-    public ResponseEntity<String> getFiles() {
+    @PostMapping("/google")
+    public ResponseEntity<String> getFiles(@RequestBody Map<String, Object> request) {
         logger.info("get files");
-        return ResponseEntity.ok(googleDriveService.getFiles());
+        return ResponseEntity.ok(googleDriveService.getFiles(request.get("access_token").toString(), request.get("refresh_token").toString()));
     }
 
     @PostMapping("/google/upload")

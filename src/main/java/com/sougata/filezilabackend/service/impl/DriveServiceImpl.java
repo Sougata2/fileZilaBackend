@@ -34,6 +34,7 @@ import java.util.Date;
 @RequiredArgsConstructor
 public class DriveServiceImpl implements GoogleDriveService {
 
+    private Drive drive;
     private final GoogleProperties properties;
 
     /**
@@ -46,7 +47,7 @@ public class DriveServiceImpl implements GoogleDriveService {
      */
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
 
-    private Drive getDrive() {
+    private Drive getDrive(String accessToken, String refreshToken) {
         try {
             final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
 
@@ -56,8 +57,8 @@ public class DriveServiceImpl implements GoogleDriveService {
             UserCredentials userCredentials = UserCredentials.newBuilder()
                     .setClientId(properties.getClientId())
                     .setClientSecret(properties.getClientSecret())
-                    .setAccessToken(new AccessToken(extractAccessToken(request.getCookies()), new Date(System.currentTimeMillis() + 3600 * 1000)))
-                    .setRefreshToken(extractRefreshToken(request.getCookies()))
+                    .setAccessToken(new AccessToken(accessToken, new Date(System.currentTimeMillis() + 3600 * 1000)))
+                    .setRefreshToken(refreshToken)
                     .build();
             HttpCredentialsAdapter adapter = new HttpCredentialsAdapter(userCredentials);
             return new Drive.Builder(HTTP_TRANSPORT, JSON_FACTORY, adapter)
@@ -68,9 +69,10 @@ public class DriveServiceImpl implements GoogleDriveService {
     }
 
     @Override
-    public String getFiles() {
+    public String getFiles(String accessToken, String refreshToken) {
         try {
-            FileList files = getDrive().files().list()
+            this.drive = getDrive(accessToken, refreshToken);
+            FileList files = drive.files().list()
                     .setPageSize(100)
                     .execute();
             return files.getFiles().toString();
@@ -88,7 +90,7 @@ public class DriveServiceImpl implements GoogleDriveService {
             File fileMetadata = new File();
             fileMetadata.setParents(Collections.singletonList(folderId));
             fileMetadata.setName(file.getOriginalFilename());
-            File uploadFile = getDrive()
+            File uploadFile = drive
                     .files()
                     .create(fileMetadata, new InputStreamContent(
                             file.getContentType(),
@@ -106,7 +108,7 @@ public class DriveServiceImpl implements GoogleDriveService {
     @Override
     public File downloadFile(String fileId, OutputStream outputStream) {
         try {
-            Drive service = getDrive();
+            Drive service = drive;
             File fileMetaData = service.files().get(fileId).setFields("name, mimeType").execute();
             service.files().get(fileId).executeMediaAndDownloadTo(outputStream);
             return fileMetaData;
@@ -118,7 +120,7 @@ public class DriveServiceImpl implements GoogleDriveService {
     @Override
     public void previewFile(String fileId, HttpServletResponse response) {
         try {
-            Drive service = getDrive();
+            Drive service = drive;
             File fileMetaData = service.files().get(fileId).setFields("name, mimeType").execute();
 
             response.setContentType(fileMetaData.getMimeType());

@@ -7,7 +7,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.OutputStream;
 
 public interface GoogleDriveService {
-    String getFiles();
+    String getFiles(String accessToken, String refreshToken);
 
     String uploadFile(MultipartFile file);
 
